@@ -1,0 +1,166 @@
+{
+    "experiment_name": "humanoidGR_training",
+    "seed": 42,
+    
+    "data": {
+        "lmdb_dir": "data/humanoid_lmdb",
+        "video_base_path": "data/video/snippet_videos",
+        "train_start_ratio": 0.0,
+        "train_end_ratio": 0.8,
+        "val_start_ratio": 0.8,
+        "val_end_ratio": 1.0,
+        "load_video": true,
+        "num_workers": 4
+    },
+    
+    "model": {
+        "state_dim": 56,
+        "act_dim": 56,
+        "hidden_size": 768,
+        "sequence_length": 5,
+        "chunk_size": 3,
+        "image_size": [224, 224],
+        "patch_size": 16,
+        "training_target": ["act_pred", "fwd_pred"],
+        "img_feat_dim": 768,
+        "patch_feat_dim": 768,
+        "lang_feat_dim": 512,
+        "without_norm_pixel_loss": false,
+        
+        "resampler_params": {
+            "num_latents": 9,
+            "depth": 2,
+            "dim_head": 64,
+            "heads": 8,
+            "num_media_embeds": 1
+        },
+        
+        "gpt_params": {
+            "n_layer": 12,
+            "n_head": 12,
+            "n_inner": 3072,
+            "activation_function": "gelu_new",
+            "resid_pdrop": 0.1,
+            "embd_pdrop": 0.1,
+            "attn_pdrop": 0.1
+        },
+        
+        "pretrained_paths": {
+            "gr1_pretrained": "GPTmodel/pretrain/pretrained.pt",
+            "mae_pretrained": "GPTmodel/pretrain/mae_pretrain_vit_base.pth"
+        }
+    },
+    
+    "training": {
+        "batch_size": 2,
+        "warmup_epochs": 2,
+        "finetune_epochs": 20,
+        "lr": 1e-4,
+        "weight_decay": 0.01,
+        "grad_clip": 1.0,
+        "log_interval": 10,
+        "save_interval": 5,
+        "optimizer": "adamw",
+        "num_gpus": 8,
+        
+        "scheduler": {
+            "type": "cosine_with_warmup",
+            "warmup_ratio": 0.1,
+            "min_lr_ratio": 0.01
+        },
+        
+        "lora": {
+            "use_lora": true,
+            "rank": 16,
+            "alpha": 32,
+            "target_modules": ["c_attn", "c_proj"],
+            "lr_multiplier": 1.0,
+            "weight_decay": 0.01,
+            "dropout": 0.1
+        },
+        
+        "mixed_precision": {
+            "enabled": true,
+            "dtype": "fp16"
+        }
+    },
+    
+    "loss_weights": {
+        "video_mse": 0.1,
+        "left_leg": 1.0,
+        "right_leg": 1.0,
+        "torso_spine": 1.0,
+        "head_neck": 1.0,
+        "left_arm": 1.0,
+        "right_arm": 1.0
+    },
+    
+    "body_part_indices": {
+        "left_leg": [0, 7],
+        "right_leg": [7, 14],
+        "torso_spine": [14, 23],
+        "head_neck": [23, 32],
+        "left_arm": [32, 44],
+        "right_arm": [44, 56]
+    },
+    
+    "logging": {
+        "log_dir": "logs/humanoidGR",
+        "save_dir": "checkpoints/humanoidGR",
+        "tensorboard": true,
+        "swanlab": true,
+        "swanlab_project": "HumanoidGR-Training",
+        "log_metrics": [
+            "total_loss",
+            "video_mse",
+            "action_left_leg",
+            "action_right_leg", 
+            "action_torso_spine",
+            "action_head_neck",
+            "action_left_arm",
+            "action_right_arm",
+            "learning_rate",
+            "fps",
+            "gpu_memory_usage"
+        ]
+    },
+    
+    "distributed": {
+        "use_accelerate": true,
+        "find_unused_parameters": true,
+        "gradient_accumulation_steps": 4,
+        "ddp_backend": "nccl",
+        "mixed_precision": "fp16"
+    },
+    
+    "evaluation": {
+        "eval_interval": 5,
+        "eval_episodes": 100,
+        "save_videos": false,
+        "metrics": [
+            "action_mse",
+            "video_psnr",
+            "trajectory_similarity"
+        ]
+    },
+    
+    "checkpointing": {
+        "save_every_n_epochs": 5,
+        "save_best_model": true,
+        "max_checkpoints_to_keep": 5,
+        "resume_from_checkpoint": null
+    },
+    
+    "data_augmentation": {
+        "enabled": false,
+        "video_augmentation": {
+            "random_crop": false,
+            "color_jitter": false,
+            "gaussian_noise": false
+        },
+        "action_augmentation": {
+            "gaussian_noise_std": 0.01,
+            "enabled": false
+        }
+    }
+} 
